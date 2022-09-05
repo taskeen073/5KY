@@ -1,4 +1,4 @@
-﻿unit uJobActivity;
+unit uJobActivity;
 
 interface
 
@@ -148,7 +148,6 @@ type
       EventParams: TStringList);
     procedure btUploadImage8AsyncUploadSuccess(Sender: TObject;
       EventParams: TStringList);
-    procedure MyConfirmCallback(EventParams: TStringList);
     procedure btSaveUrgentAsyncClick(Sender: TObject; EventParams: TStringList);
     procedure btSaveDuedateAsyncClick(Sender: TObject;
       EventParams: TStringList);
@@ -158,8 +157,7 @@ type
     procedure btSaveCommentAsyncClick(Sender: TObject;
       EventParams: TStringList);
     procedure btPauseAsyncClick(Sender: TObject; EventParams: TStringList);
-    procedure IWButton1AsyncClick(Sender: TObject; EventParams: TStringList);
-    procedure forrefresh;
+
 
   public
     Hour : String ;
@@ -187,8 +185,10 @@ type
     con:boolean;
     linettest:string;
     TextPause:string;
+    MessageCap:string;
 
 
+    procedure forrefresh;
     procedure UpdateUrgentAndHrCost;
     procedure UpdateDetail;
     procedure UpdateImg;
@@ -196,6 +196,7 @@ type
     Procedure UpdatejobTSED;
     Procedure InsertComment;
     procedure MypromptCallback(EventParams: TstringList);
+    procedure MyConfirmCallback(EventParams: TStringList);
 
   end;
 
@@ -249,15 +250,18 @@ procedure TfrJobActivity.MypromptCallback(EventParams: TstringList);
 procedure TfrJobActivity.InsertComment;
  var saveok:boolean;
 begin
+      qServerDate.Close;
+      qServerDate.Open;
+      MessageCap:='  '+btSaveComment.Caption+' ';
       saveok:=false;
       UserSession.DB.StartTransaction;
       try
-      qSaveComment.Close;
-      qSaveComment.ParamByName('jobservice').AsInteger:=UserSession.jobid;
-      qSaveComment.ParamByName('JobActType').AsString   :=  'M' ;//M= Message Comment
-      qSaveComment.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
-      qSaveComment.ParamByName('JobActTime').AsString   := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
-      qSaveComment.ParamByName('JobComment').AsString   := Trim(mmComment.Text) ;
+        qSaveComment.Close;
+        qSaveComment.ParamByName('jobservice').AsInteger:=UserSession.jobid;
+        qSaveComment.ParamByName('JobActType').AsString   :=  'M' ;//M= Message Comment
+        qSaveComment.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
+        qSaveComment.ParamByName('JobActTime').AsString   := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
+        qSaveComment.ParamByName('JobComment').AsString   := Trim(mmComment.Text) ;
       if (Not qCheckCustomer.IsEmpty) then
       begin
         qSaveComment.ParamByName('JobActBy').AsString   := qCheckCustomer.FieldByName('Code').AsString;
@@ -274,15 +278,14 @@ begin
       begin
         qSaveComment.ParamByName('Internal').AsString   := 'N';
       end;
-      qSaveComment.ExecSQL;
-      UserSession.Db.Commit;
-      saveok:=true;
+        qSaveComment.ExecSQL;
+        UserSession.Db.Commit;
+        saveok:=true;
       Except on E: Exception do
       begin
         saveok:=false;
         UserSession.DB.Rollback;
-        WebApplication.ShowMessage('จัดเก็บข้อมูลผิดพลาด : '+E.Message);
-
+        WebApplication.ShowMessage(' '+MessageCap+'   จัดเก็บข้อมูลผิดพลาด :' +E.Message);
       end;
 
       end;
@@ -346,7 +349,8 @@ begin
                                   '  วันที่ '+DateTimeToStr(qSelectAllJobService.FieldByName('JobDate').AsDateTime)+
                                   ' '+qSelectAllJobService.FieldByName('JobTime').AsString+
                                   ' '+qSelectAllJobService.FieldByName('JobTitle').AsString+' ('+slJobStatus.Text+') '+
-                                  ' '+qCheckEmployee.FieldByName('Code').Asstring+' '+
+                                  ' SBC   '+
+//                                  qCheckEmployee.FieldByName('Code').Asstring+' '+
                                   'แสดงความคิดเห็น : '+mmComment.Text+
                                   ' '+
                                   ShortURL(usersession.MainURL+'/m?JobId='+
@@ -359,21 +363,23 @@ begin
           ,MessageToCusTomer);
             end;
         end;
+    end;
 
-
-    end
-  Else
-    webapplication.ShowMessage('จัดเก็บข้อมูลผิดพลาด') ;
-
-forrefresh;
+  WebApplication.ShowNotification('บันทึกสำเร็จ'+MessageCap,ntSuccess);
+  mmComment.Clear;
+  mmComment.SetFocus;
+  forrefresh;
 end;
 
 procedure TfrJobActivity.UpdatePause;
 var saveok:boolean;
    begin
-   saveok:=false;
-   
-   UserSession.DB.StartTransaction;
+
+    MessageCap:='  '+btPause.Caption+' ';
+    qServerDate.Close;
+    qServerDate.Open;
+    saveok:=false;
+    UserSession.DB.StartTransaction;
 
    try
       begin
@@ -393,48 +399,43 @@ var saveok:boolean;
 //            WebApplication.ShowMessage(Pause);            //Pause Is G
             Pause:='G';
         end;
-    qInsertActivity.ParamByName('JobActType').AsString   :=  Pause ;//P=Pause/G=Go
-    
-    qInsertActivity.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
-    
-    qInsertActivity.ParamByName('JobActTime').AsString   := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
-   
+
+      qInsertActivity.ParamByName('JobActType').AsString   :=  Pause ;//P=Pause/G=Go
+
+      qInsertActivity.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
+
+      qInsertActivity.ParamByName('JobActTime').AsString   := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
+
     if sametext(Pause , 'P') then
       begin
-      qInsertActivity.ParamByName('JobComment').AsString := 'หยุดการทำงาน หมายเหตุ : '+textRemark;
-     
+        qInsertActivity.ParamByName('JobComment').AsString := 'หยุดการทำงาน หมายเหตุ : '+textRemark;
       end
     else if sametext(Pause , 'G') then
-    begin
-      qInsertActivity.ParamByName('JobComment').AsString := 'ทำงานต่อ' ;
-     
-    end;
+      begin
+        qInsertActivity.ParamByName('JobComment').AsString := 'ทำงานต่อ' ;
+      end;
     if (Not qCheckCustomer.IsEmpty) then
       begin
-      qInsertActivity.ParamByName('JobActBy').AsString := qCheckCustomer.FieldByName('Code').AsString;
-       
+        qInsertActivity.ParamByName('JobActBy').AsString := qCheckCustomer.FieldByName('Code').AsString;
       end
     else if (Not qCheckEmployee.IsEmpty) then
       begin
-      qInsertActivity.ParamByName('JobActBy').AsString := qCheckEmployee.FieldByName('Code').AsString ;
-      
-      end;
-    qInsertActivity.ParamByName('Internal').AsString := 'Y' ;
-     
-    qInsertActivity.ExecSQL;
-     
-    UserSession.DB.Commit;
-     
-    saveok:=true;
+        qInsertActivity.ParamByName('JobActBy').AsString := qCheckEmployee.FieldByName('Code').AsString ;
 
+      end;
+
+        qInsertActivity.ParamByName('Internal').AsString := 'Y' ;
+
+        qInsertActivity.ExecSQL;
+        UserSession.DB.Commit;
+        saveok:=true;
      end;
     except on E:Exception do
        begin
-       saveok:=false;
-       WebApplication.ShowMessage('Your Error is:  ' +E.Message);
-       end;
+         saveok:=false;
+         WebApplication.ShowMessage(' '+MessageCap+'   จัดเก็บข้อมูลผิดพลาด :' +E.Message);
+         end;
       end;
-
 
    if saveok then
       begin
@@ -443,13 +444,10 @@ var saveok:boolean;
          qSelectAllJobService.ParamByName('id').AsInteger:=UserSession.jobid;
          qSelectAllJobService.Open;
 
-
-
       if (Not qCheckEmployee.IsEmpty) then
         begin
           qSelectTokenSBC.Close ;
           qSelectTokenSBC.Open  ;
-
 
           if sametext('P',Pause) then
             begin
@@ -476,130 +474,57 @@ var saveok:boolean;
             linettest
             ,MessageToSBC);
 
-
-
         end;
       end;
-
-      forrefresh;
-
+    WebApplication.ShowNotification('บันทึกสำเร็จ  '+MessageCap,ntSuccess);
+  forrefresh;
 end;
 
 procedure TfrJobActivity.UpdatejobTSED;
 var saveok:boolean;
 
   begin
+    MessageCap:='  '+btSaveDuedate.Caption+' ';
 
-  saveok:=false;
-  UserSession.DB.StartTransaction;
+    qServerDate.Close;
+    qServerDate.Open;
+
+    saveok:=false;
+    UserSession.DB.StartTransaction;
 
   try
-  qUpdateJobTSED.Close;
-  qUpdateJobTSED.ParamByName('jobid').AsInteger:=UserSession.jobid;
+    qUpdateJobTSED.Close;
+    qUpdateJobTSED.ParamByName('jobid').AsInteger:=UserSession.jobid;
 
-  qJobStatusID.Close;
-  qJobStatusID.ParamByName('Description').AsString:=slJobstatus.Text;
-  qJobStatusID.Open;
+    qJobStatusID.Close;
+    qJobStatusID.ParamByName('Description').AsString:=slJobstatus.Text;
+    qJobStatusID.Open;
 
-  qJobTypeID.Close;
-  qJobTypeID.ParamByName('Description').AsString:=slJobType.Text;
-  qJobTypeID.Open;
+    qJobTypeID.Close;
+    qJobTypeID.ParamByName('Description').AsString:=slJobType.Text;
+    qJobTypeID.Open;
 
-  qEmployeeID.Close;
-  qEmployeeID.ParamByName('code').AsString:=slJobEmployee.Text;
-  qEmployeeID.Open;
+    qEmployeeID.Close;
+    qEmployeeID.ParamByName('code').AsString:=slJobEmployee.Text;
+    qEmployeeID.Open;
 
 
-  qUpdateJobTSED.ParamByName('JobStatus').AsInteger:=qJobStatusID.FieldByName('id').AsInteger;
-  qUpdateJobTSED.ParamByName('JobClose').AsString:=qJobStatusID.FieldByName('finished').AsString;
-  qUpdateJobTSED.ParamByName('JobEmployee').AsInteger:=qEmployeeID.FieldByName('id').AsInteger;
-  qUpdateJobTSED.ParamByName('JobType').AsInteger:=qJobTypeID.FieldByName('id').AsInteger;
-  qUpdateJobTSED.ParamByName('JobDueDate').AsDate:=edDueDate.Date;
-  qUpdateJobTSED.ParamByName('JobDueTime').AsString:=(FormatDateTime('hh:nn',(edDueTime.AsDateTime)));
-  qUpdateJobTSED.ExecSQL;
+    qUpdateJobTSED.ParamByName('JobStatus').AsInteger:=qJobStatusID.FieldByName('id').AsInteger;
+    qUpdateJobTSED.ParamByName('JobClose').AsString:=qJobStatusID.FieldByName('finished').AsString;
+    qUpdateJobTSED.ParamByName('JobEmployee').AsInteger:=qEmployeeID.FieldByName('id').AsInteger;
+    qUpdateJobTSED.ParamByName('JobType').AsInteger:=qJobTypeID.FieldByName('id').AsInteger;
+    qUpdateJobTSED.ParamByName('JobDueDate').AsDate:=edDueDate.Date;
+    qUpdateJobTSED.ParamByName('JobDueTime').AsString:=(FormatDateTime('hh:nn',(edDueTime.AsDateTime)));
+    qUpdateJobTSED.ExecSQL;
 
-  if not  sametext(slJobEmployee.Text,keepemp) then
-      begin
-          qInsertActivity.Close;
-          qInsertActivity.ParamByName('JobService').AsInteger := UserSession.JobId ;
-          qInsertActivity.ParamByName('JobActType').AsString :=  'R' ;//R=Response Change
-          qInsertActivity.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
-          qInsertActivity.ParamByName('JobActTime').AsString := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
-          qInsertActivity.ParamByName('JobComment').AsString := 'เปลี่ยนผู้ดำเนินการเป็น '+slJobEmployee.Text ;
-
-          if (Not qCheckCustomer.IsEmpty) then
-            qInsertActivity.ParamByName('JobActBy').AsString := qCheckCustomer.FieldByName('Code').AsString
-          else if (Not qCheckEmployee.IsEmpty) then
-            qInsertActivity.ParamByName('JobActBy').AsString := qCheckEmployee.FieldByName('Code').AsString ;
-
-          qInsertActivity.ParamByName('Internal').AsString := 'N' ;
-          qInsertActivity.ExecSQL;
-      end;
-
-    if ((not SameText(FormatDateTime('dd/MM/yyyy',edDueDate.Date),keepduedate)) or (not SameText(formatdatetime('HH:mm',edDueTime.AsDateTime),keepduetime))) then
+    if not  sametext(slJobEmployee.Text,keepemp) then
         begin
-
-          qInsertActivity.Close;
-          qInsertActivity.ParamByName('JobService').AsInteger  := UserSession.JobId ;
-          qInsertActivity.ParamByName('JobActType').AsString   :=  'D' ;//D=Change Due
-          qInsertActivity.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
-          qInsertActivity.ParamByName('JobActTime').AsString   := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
-          qInsertActivity.ParamByName('JobComment').AsString   := 'เปลี่ยนกำหนดส่งเป็นวันที่ '+DateToStr(edDueDate.Date)+' '+formatdatetime('HH:MM',StrToTime(edDueTime.Text)) ;
-
-          if (Not qCheckCustomer.IsEmpty) then
-            begin
-            qInsertActivity.ParamByName('JobActBy').AsString := qCheckCustomer.FieldByName('Code').AsString
-            end
-          else if (Not qCheckEmployee.IsEmpty) then
-            begin
-            qInsertActivity.ParamByName('JobActBy').AsString := qCheckEmployee.FieldByName('Code').AsString ;
-            end;
-
-          qInsertActivity.ParamByName('Internal').AsString := 'N' ;
-
-          qInsertActivity.ExecSQL;
-
-        end;
-
-    if not  sametext(slJobstatus.Text,keepobstatus) then
-
-          btPause.Visible:=false;
-        begin
-                qInsertActivity.Close;
-                qInsertActivity.ParamByName('JobService').AsInteger := UserSession.JobId ;
-            if (qJobStatusID.FieldByName('Code').AsString = '01') then
-               begin
-                qInsertActivity.ParamByName('JobActType').AsString :=  'X' ; //X จาก รอพิจารณา-->รอดำเนินการ
-                qInsertActivity.ParamByName('JobComment').AsString := 'รอดำเนินการ' ;
-              end;
-            if (qJobStatusID.FieldByName('Code').AsString = '04') then
-              begin
-                qInsertActivity.ParamByName('JobActType').AsString :=  'S' ; //S=Start
-                qInsertActivity.ParamByName('JobComment').AsString := 'กำลังดำเนินการ' ;
-                btPause.Visible:=true;
-              end;
-            if (qJobStatusID.FieldByName('Code').AsString = '05') then
-              begin
-                qInsertActivity.ParamByName('JobActType').AsString :=  'W' ;//W=Wait
-                qInsertActivity.ParamByName('JobComment').AsString := 'รอข้อมูลจากลูกค้า' ;
-              end;
-            if (qJobStatusID.FieldByName('Code').AsString = '06') then
-              begin
-                qInsertActivity.ParamByName('JobActType').AsString :=  'F' ;//F=Finish
-                qInsertActivity.ParamByName('JobComment').AsString := 'เสร็จรอส่ง' ;
-              end;
-            if (qJobStatusID.FieldByName('Code').AsString = '07') then
-              begin
-                qInsertActivity.ParamByName('JobActType').AsString :=  'A' ;//A=Abolish
-                qInsertActivity.ParamByName('JobComment').AsString := 'ยกเลิก' ;
-              end;
-            if (qJobStatusID.FieldByName('Code').AsString = '08') then
-              begin
-                qInsertActivity.ParamByName('JobActType').AsString :=  'C' ;//C=Close
-                qInsertActivity.ParamByName('JobComment').AsString := 'เสร็จเรียบร้อย' ;
-              end;
+            qInsertActivity.Close;
+            qInsertActivity.ParamByName('JobService').AsInteger := UserSession.JobId ;
+            qInsertActivity.ParamByName('JobActType').AsString :=  'R' ;//R=Response Change
             qInsertActivity.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
             qInsertActivity.ParamByName('JobActTime').AsString := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
+            qInsertActivity.ParamByName('JobComment').AsString := 'เปลี่ยนผู้ดำเนินการเป็น '+slJobEmployee.Text ;
 
             if (Not qCheckCustomer.IsEmpty) then
               qInsertActivity.ParamByName('JobActBy').AsString := qCheckCustomer.FieldByName('Code').AsString
@@ -610,14 +535,88 @@ var saveok:boolean;
             qInsertActivity.ExecSQL;
         end;
 
+      if ((not SameText(FormatDateTime('dd/MM/yyyy',edDueDate.Date),keepduedate)) or (not SameText(formatdatetime('HH:mm',edDueTime.AsDateTime),keepduetime))) then
+          begin
 
-    UserSession.Db.Commit;
-    saveok:=true;
+            qInsertActivity.Close;
+            qInsertActivity.ParamByName('JobService').AsInteger  := UserSession.JobId ;
+            qInsertActivity.ParamByName('JobActType').AsString   :=  'D' ;//D=Change Due
+            qInsertActivity.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
+            qInsertActivity.ParamByName('JobActTime').AsString   := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
+            qInsertActivity.ParamByName('JobComment').AsString   := 'เปลี่ยนกำหนดส่งเป็นวันที่ '+DateToStr(edDueDate.Date)+' '+formatdatetime('HH:MM',StrToTime(edDueTime.Text)) ;
+
+            if (Not qCheckCustomer.IsEmpty) then
+              begin
+                qInsertActivity.ParamByName('JobActBy').AsString := qCheckCustomer.FieldByName('Code').AsString
+              end
+            else if (Not qCheckEmployee.IsEmpty) then
+              begin
+                qInsertActivity.ParamByName('JobActBy').AsString := qCheckEmployee.FieldByName('Code').AsString ;
+              end;
+
+            qInsertActivity.ParamByName('Internal').AsString := 'N' ;
+
+            qInsertActivity.ExecSQL;
+
+          end;
+
+      if not  sametext(slJobstatus.Text,keepobstatus) then
+
+            btPause.Visible:=false;
+          begin
+                  qInsertActivity.Close;
+                  qInsertActivity.ParamByName('JobService').AsInteger := UserSession.JobId ;
+              if (qJobStatusID.FieldByName('Code').AsString = '01') then
+                 begin
+                  qInsertActivity.ParamByName('JobActType').AsString :=  'X' ; //X จาก รอพิจารณา-->รอดำเนินการ
+                  qInsertActivity.ParamByName('JobComment').AsString := 'รอดำเนินการ' ;
+                end;
+              if (qJobStatusID.FieldByName('Code').AsString = '04') then
+                begin
+                  qInsertActivity.ParamByName('JobActType').AsString :=  'S' ; //S=Start
+                  qInsertActivity.ParamByName('JobComment').AsString := 'กำลังดำเนินการ' ;
+                  btPause.Visible:=true;
+                end;
+              if (qJobStatusID.FieldByName('Code').AsString = '05') then
+                begin
+                  qInsertActivity.ParamByName('JobActType').AsString :=  'W' ;//W=Wait
+                  qInsertActivity.ParamByName('JobComment').AsString := 'รอข้อมูลจากลูกค้า' ;
+                end;
+              if (qJobStatusID.FieldByName('Code').AsString = '06') then
+                begin
+                  qInsertActivity.ParamByName('JobActType').AsString :=  'F' ;//F=Finish
+                  qInsertActivity.ParamByName('JobComment').AsString := 'เสร็จรอส่ง' ;
+                end;
+              if (qJobStatusID.FieldByName('Code').AsString = '07') then
+                begin
+                  qInsertActivity.ParamByName('JobActType').AsString :=  'A' ;//A=Abolish
+                  qInsertActivity.ParamByName('JobComment').AsString := 'ยกเลิก' ;
+                end;
+              if (qJobStatusID.FieldByName('Code').AsString = '08') then
+                begin
+                  qInsertActivity.ParamByName('JobActType').AsString :=  'C' ;//C=Close
+                  qInsertActivity.ParamByName('JobComment').AsString := 'เสร็จเรียบร้อย' ;
+                end;
+              qInsertActivity.ParamByName('JobActDate').AsDatetime := qServerDate.FieldByName('ServerDate').AsDateTime ;
+              qInsertActivity.ParamByName('JobActTime').AsString := formatdatetime('HH:MM',(qServerDate.FieldByName('ServerDateTime').AsDateTime)) ;
+
+              if (Not qCheckCustomer.IsEmpty) then
+                qInsertActivity.ParamByName('JobActBy').AsString := qCheckCustomer.FieldByName('Code').AsString
+              else if (Not qCheckEmployee.IsEmpty) then
+                qInsertActivity.ParamByName('JobActBy').AsString := qCheckEmployee.FieldByName('Code').AsString ;
+
+              qInsertActivity.ParamByName('Internal').AsString := 'N' ;
+              qInsertActivity.ExecSQL;
+          end;
+
+
+      UserSession.Db.Commit;
+      saveok:=true;
   except on E : Exception do
       begin
-        saveok:=false;
+         saveok:=false;
          UserSession.DB.Rollback;
-         WebApplication.ShowMessage('จัดเก็บข้อมูลผิดพลาด : '+E.Message);
+         WebApplication.ShowMessage(' '+MessageCap+'   จัดเก็บข้อมูลผิดพลาด :' +E.Message);
       end;
 
   end;
@@ -697,39 +696,18 @@ var saveok:boolean;
 
       if not  sametext(slJobEmployee.Text,keepemp) then
           begin
-
               if (Not qCheckEmployee.IsEmpty) then
-        begin
-              qSelectAllJobService.Close;
-              qSelectAllJobService.ParamByName('id').AsInteger:=UserSession.jobid;
-              qSelectAllJobService.Open;
-
-              qCustomerID.Close ;
-              qCustomerID.ParamByName('Id').AsInteger := qSelectAllJobService.FieldByName('Customer').AsInteger  ;
-              qCustomerID.Open ;
-
-          //To SBC
-          MessageToSBC := qCustomerID.FieldByName('Code').Asstring+
-                          ' #'+IntToStr(qSelectAllJobService.FieldByName('Id').AsInteger)+
-                          ' '+DateTimeToStr(qSelectAllJobService.FieldByName('JobDate').AsDateTime)+
-                          ' '+qSelectAllJobService.FieldByName('JobTime').AsString+
-                          ' '+qSelectAllJobService.FieldByName('JobTitle').AsString+
-                          ' ('+qCheckEmployee.FieldByName('Code').Asstring+' '+
-                          '->'+slJobEmployee.Text+' รับผิดชอบ)'+
-                          ' '+
-                          ShortURL(usersession.MainURL+'/m?JobId='+
-                          qSelectAllJobService.FieldByName('RandomKey').AsString);
-//          SendLine('WAUFTFpGY4rV2oW4q8WdOw2qaBf63BfxBEoPTsVvvyn',MessageToSBC);
-            UserSession.sendline(
-  //          'WAUFTFpGY4rV2oW4q8WdOw2qaBf63BfxBEoPTsVvvyn'
-            linettest
-            ,MessageToSBC);
-
-          if (qEmployeeID.FieldByName('LineToken').AsString <> '') or
-             (qEmployeeID.FieldByName('LineToken').IsNull) then
             begin
-              //To Employee
-              MessageToEmployee := qCustomerID.FieldByName('Code').Asstring+
+                  qSelectAllJobService.Close;
+                  qSelectAllJobService.ParamByName('id').AsInteger:=UserSession.jobid;
+                  qSelectAllJobService.Open;
+
+                  qCustomerID.Close ;
+                  qCustomerID.ParamByName('Id').AsInteger := qSelectAllJobService.FieldByName('Customer').AsInteger  ;
+                  qCustomerID.Open ;
+
+              //To SBC
+              MessageToSBC := qCustomerID.FieldByName('Code').Asstring+
                               ' #'+IntToStr(qSelectAllJobService.FieldByName('Id').AsInteger)+
                               ' '+DateTimeToStr(qSelectAllJobService.FieldByName('JobDate').AsDateTime)+
                               ' '+qSelectAllJobService.FieldByName('JobTime').AsString+
@@ -739,14 +717,42 @@ var saveok:boolean;
                               ' '+
                               ShortURL(usersession.MainURL+'/m?JobId='+
                               qSelectAllJobService.FieldByName('RandomKey').AsString);
-//              SendLine(Trim(qEmployeeID.FieldByName('LineToken').AsString),MessageToEmployee);
-            UserSession.sendline(
-  //          'WAUFTFpGY4rV2oW4q8WdOw2qaBf63BfxBEoPTsVvvyn'
-            linettest
-            ,MessageToEmployee);
+    //          SendLine('WAUFTFpGY4rV2oW4q8WdOw2qaBf63BfxBEoPTsVvvyn',MessageToSBC);
+                UserSession.sendline(
+      //          'WAUFTFpGY4rV2oW4q8WdOw2qaBf63BfxBEoPTsVvvyn'
+                linettest
+                ,MessageToSBC);
+
+              if (qEmployeeID.FieldByName('LineToken').AsString <> '') or
+                 (qEmployeeID.FieldByName('LineToken').IsNull) then
+                begin
+                  //To Employee
+                  MessageToEmployee := qCustomerID.FieldByName('Code').Asstring+
+                                  ' #'+IntToStr(qSelectAllJobService.FieldByName('Id').AsInteger)+
+                                  ' '+DateTimeToStr(qSelectAllJobService.FieldByName('JobDate').AsDateTime)+
+                                  ' '+qSelectAllJobService.FieldByName('JobTime').AsString+
+                                  ' '+qSelectAllJobService.FieldByName('JobTitle').AsString+
+                                  ' ('+qCheckEmployee.FieldByName('Code').Asstring+' '+
+                                  '->'+slJobEmployee.Text+' รับผิดชอบ)'+
+                                  ' '+
+                                  ShortURL(usersession.MainURL+'/m?JobId='+
+                                  qSelectAllJobService.FieldByName('RandomKey').AsString);
+    //              SendLine(Trim(qEmployeeID.FieldByName('LineToken').AsString),MessageToEmployee);
+                UserSession.sendline(
+      //          'WAUFTFpGY4rV2oW4q8WdOw2qaBf63BfxBEoPTsVvvyn'
+                linettest
+                ,MessageToEmployee);
+                end;
+              end;
             end;
-          end;
-        end;
+            keepemp:=slJobEmployee.Text;
+            keepjoptype:=slJobType.Text;
+            keepduedate:=FormatDateTime('dd/MM/yyyy',edDueDate.Date);
+            keepduetime:=formatdatetime('HH:mm',edDueTime.AsDateTime);
+
+
+      WebApplication.ShowNotification('บันทึกสำเร็จ'+MessageCap,ntSuccess);
+
       end;
 end;
 
@@ -762,6 +768,7 @@ var SaveOk : Boolean ;
     Pic8    : TMemoryStream ;
 begin
 
+  MessageCap:='  '+btSavePicture.Caption+' ';
   qUpdateImg.Close;
   saveok:=False;
   UserSession.DB.StartTransaction;
@@ -866,19 +873,18 @@ begin
     begin
       UserSession.db.Rollback;
       SaveOk := False;
-      WebApplication.ShowMessage('จัดเก็บข้อมูลผิดพลาด : '+E.Message);
+      WebApplication.ShowMessage(' '+MessageCap+'   จัดเก็บข้อมูลผิดพลาด :' +E.Message);
     end;
 
   end;
 
   if saveok then
   begin
-    WebApplication.ShowMessage('Uplode Image Sucsess');
+      WebApplication.ShowNotification('บันทึกสำเร็จ  '+MessageCap,ntSuccess);
   end
   else
   begin
-
-    WebApplication.ShowMessage('Upload Image Is False');
+    WebApplication.ShowNotification('Upload Image Is False',ntError);
   end;
 
 end;
@@ -886,10 +892,11 @@ end;
 procedure TfrJobActivity.Updatedetail;
 Var SaveOk : Boolean ;
 begin
-  qUpdateDetail.Close;
-  SaveOk := True ;
-  UserSession.Db.StartTransaction ;
-  qUpdateDetail.ParamByName('jobid').AsInteger :=UserSession.jobid ;
+    MessageCap:='  '+btSaveDetail.Caption+' ';
+    qUpdateDetail.Close;
+    SaveOk := True ;
+    UserSession.Db.StartTransaction ;
+    qUpdateDetail.ParamByName('jobid').AsInteger :=UserSession.jobid ;
   Try
     qUpdateDetail.ParamByName('JobTitle').AsString := Trim(edTitle.Text) ;
     qUpdateDetail.ParamByName('CusAttn').AsString := Trim(edInformant.Text) ;
@@ -900,20 +907,22 @@ begin
     SaveOk:=true;
   Except on E : Exception do
     begin
-
-    SaveOk := False ;
-    UserSession.Db.Rollback ;
-
-    WebApplication.ShowMessage('Message IS : '+E.Message);
+      SaveOk := False ;
+      UserSession.Db.Rollback ;
+      WebApplication.ShowMessage(' '+MessageCap+'   จัดเก็บข้อมูลผิดพลาด :' +E.Message);
     end;
   End;
-  forrefresh;
+
+      WebApplication.ShowNotification('บันทึกสำเร็จ  '+MessageCap,ntSuccess);
+//  forrefresh;
 end;
 
 
  procedure TfrJobActivity.UpdateUrgentAndHrCost;
     var saveok:boolean;
  begin
+
+  MessageCap:='  '+btSaveUrgent.Caption+' ';
   qUpdateUrgent.Close;
   SaveOk := false ;
   UserSession.Db.StartTransaction ;
@@ -934,12 +943,14 @@ end;
     SaveOk := True;
   Except on E : Exception do
     begin
-    SaveOk := False ;
-    usersession.Db.Rollback ;
-    WebApplication.ShowMessage('This Your Error Is : '+E.Message);
+      SaveOk := False ;
+      usersession.Db.Rollback ;
+      WebApplication.ShowMessage(' '+MessageCap+'   จัดเก็บข้อมูลผิดพลาด :' +E.Message);
     end;
   End;
-  forrefresh;
+
+      WebApplication.ShowNotification('บันทึกสำเร็จ  '+MessageCap,ntSuccess);
+//  forrefresh;
 end;
 
 procedure TfrJobActivity.btUploadImage1AsyncUploadCompleted(Sender: TObject;
@@ -970,7 +981,14 @@ procedure TfrJobActivity.MyConfirmCallback(EventParams: TStringList);
 var
   Response: Boolean;
 begin
-  Response := SameText(EventParams.Values['RetValue'], 'True');
+
+   if (Not Usersession.db.Connected) then
+      Begin
+        Usersession.db.Open  ;
+      End;
+
+    Response := SameText(EventParams.Values['RetValue'], 'True');
+
   if Response then
     begin
     if SameText(saveis,'urgentandhrcost') then
@@ -1001,7 +1019,6 @@ begin
       begin
         WebApplication.ShowMessage('err');
       end;
-
     end;
 end;
 
@@ -1307,7 +1324,6 @@ begin
 
               if (qJobService.FieldByName('image4').IsNull) then
           begin
-
             imgSl4.Picture.LoadFromFile('images\IconMat-Black\NoPic.png');
             havepic4:=false;
           end
@@ -1332,14 +1348,12 @@ begin
 
         if (qJobService.FieldByName('image5').IsNull) then
           begin
-
             imgSl5.Picture.LoadFromFile('images\IconMat-Black\NoPic.png');
+            havepic5:=false;
           end
           else
             begin
-
               MS := TMemoryStream.Create;
-              havepic5:=false;
               try
                 ms.position:=0;
                 // Save the file content to that stream
@@ -1357,14 +1371,12 @@ begin
 
              if (qJobService.FieldByName('image6').IsNull) then
           begin
-
             imgSl6.Picture.LoadFromFile('images\IconMat-Black\NoPic.png');
+            havepic6:=false;
           end
           else
             begin
-
               MS := TMemoryStream.Create;
-              havepic6:=false;
               try
                 ms.position:=0;
                 // Save the file content to that stream
@@ -1383,14 +1395,14 @@ begin
 
               if (qJobService.FieldByName('image7').IsNull) then
           begin
-
             imgSl7.Picture.LoadFromFile('images\IconMat-Black\NoPic.png');
+            havepic7:=false;
           end
           else
             begin
 
               MS := TMemoryStream.Create;
-              havepic7:=false;
+
               try
                 ms.position:=0;
                 // Save the file content to that stream
@@ -1409,14 +1421,13 @@ begin
 
               if (qJobService.FieldByName('image8').IsNull) then
           begin
-
             imgSl8.Picture.LoadFromFile('images\IconMat-Black\NoPic.png');
+            havepic8:=false;
           end
           else
             begin
 
               MS := TMemoryStream.Create;
-              havepic8:=false;
               try
                 ms.position:=0;
                 // Save the file content to that stream
@@ -1441,8 +1452,6 @@ begin
         keepduedate:=FormatDateTime('dd/MM/yyyy',qJobService.FieldByName('jobduedate').AsDateTime);
         keepduetime:=qJobService.FieldByName('JobDueTime').AsString;
 
-
-
         WebApplication.RegisterCallBack('MyConfirmCallback', MyConfirmCallback);
         WebApplication.RegisterCallBack('MypromptCallback', MypromptCallback);
 
@@ -1450,23 +1459,6 @@ begin
 
 end;
 
-
-procedure TfrJobActivity.IWButton1AsyncClick(Sender: TObject;
-  EventParams: TStringList);
-  var c:boolean;
-begin
-      if c then
-      begin
-      btPause.Caption:='a';
-      c:=false;
-      btPause.Refresh;
-      end
-      else
-      begin
-      btPause.Caption:='b';
-      c:=true;
-      end;
-end;
 
 procedure TfrJobActivity.btClearImg1AsyncClick(Sender: TObject;
   EventParams: TStringList);
@@ -1834,8 +1826,6 @@ var JS,id:string;
 
 
     end;
-//    JS:= 'SubmitClick("'+ID+'","",false);';
-//    WebApplication.CallBackResponse.AddJavaScriptToExecute('<![CDATA['+JS+']]>');
   end;
 
 end.
